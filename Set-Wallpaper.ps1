@@ -52,9 +52,11 @@ if (-not $logFileExists) {
 }
 
 # Import the FP.SetWallpaper module if not already loaded
-if (-not (Get-Module -Name FP.SetWallpaper)) {
+$moduleExists = Get-Module -ListAvailable -Name FP.SetWallpaper
+
+if ($null -eq $moduleExists) {
     Write-EventLog -LogName "Set-Wallpaper" -Source "Set-Wallpaper" -EntryType Information -EventId 9998 -Message "Installing FP.SetWallpaper module."
-    Install-Module FP.SetWallpaper -Force -AllowClobber -Scope AllUsers -AcceptLicense
+    Install-Module FP.SetWallpaper -Force -AllowClobber -Scope CurrentUser -AcceptLicense
 }
 else {
     Write-EventLog -LogName "Set-Wallpaper" -Source "Set-Wallpaper" -EntryType Information -EventId 1007 -Message "FP.SetWallpaper module already installed."
@@ -83,12 +85,14 @@ while ($stayRunning -eq $true) {
     $monitors = Get-Monitor
     $monitor_count = 0
     foreach ($url in $urls) {
-        $url -match('\w+.jpg$')
-        $file_name = $Matches.0
-        Write-EventLog -LogName "Set-Wallpaper" -Source "Set-Wallpaper" -EntryType Information -EventId 1000 -Message "Getting new image and saving to [$file_name.tmp] in $path_to_file"
-        $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest $url -OutFile "$path_to_file\$file_name.tmp" -TimeoutSec 30 -SkipCertificateCheck -SkipHttpErrorCheck
-        $ProgressPreference = 'Continue'
+        $regex = $url -match('\w+.jpg$')
+        if ($regex) {
+            $file_name = $Matches.0
+            Write-EventLog -LogName "Set-Wallpaper" -Source "Set-Wallpaper" -EntryType Information -EventId 1000 -Message "Getting new image and saving to [$file_name.tmp] in $path_to_file"
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest $url -OutFile "$path_to_file\$file_name.tmp" -TimeoutSec 30 -SkipCertificateCheck -SkipHttpErrorCheck
+            $ProgressPreference = 'Continue'
+        }
 
         $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss" -AsUTC
         AddTextToImage -sourcePath "$path_to_file\$file_name.tmp" -destPath "$path_to_file\$file_name" -Title "$date UTC" -TestMode:$TestMode
